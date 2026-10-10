@@ -10,10 +10,14 @@ const vite = join(dirname(require.resolve('vite/package.json')), 'bin/vite.js');
 
 // Build shared runtime exports before starting application watchers.
 for (const workspace of ['@wylie/contracts', '@wylie/db']) {
-  const child = spawn('npm', ['run', 'build', '-w', workspace], { stdio: 'inherit' });
+  const child = spawn('npm', ['run', 'build', '-w', workspace], {
+  stdio: 'inherit',
+  shell: process.platform === 'win32',
+  });
   const code = await new Promise((resolve) => child.on('exit', resolve));
   if (code !== 0) process.exit(code ?? 1);
 }
+console.log('DEBUG in dev.mjs:', process.env.DATABASE_URL ? 'OK' : 'MISSING');
 const env = { ...process.env, PUBLIC_ORIGIN: process.env.PUBLIC_URL || process.env.PUBLIC_ORIGIN };
 const children = [
   spawn(process.execPath, [tsx, 'watch', 'src/server.ts'], { cwd: join(root, 'apps/api'), stdio: 'inherit', env: { ...env, PORT: env.API_PORT || '3000' } }),

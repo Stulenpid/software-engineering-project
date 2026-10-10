@@ -14,6 +14,9 @@ const env = { ...process.env };
 if (action === 'test') env.DATABASE_URL = testDatabaseUrl(env);
 if (!env.DATABASE_URL) throw new Error('DATABASE_URL is required');
 const child = spawn('npx', ['--no-install', ...command], {
-  cwd: new URL('../packages/db/', import.meta.url), stdio: 'inherit', env,
+  cwd: new URL('../packages/db/', import.meta.url),
+  stdio: 'inherit',
+  env,
+  shell: process.platform === 'win32',  // 只在 Windows 上启用 shell
 });
 child.on('exit', (code) => { process.exitCode = code ?? 1; });

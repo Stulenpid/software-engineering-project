@@ -13,7 +13,12 @@ afterAll(async () => { await admin.$disconnect(); });
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 function run(command: string, args: string[], env: NodeJS.ProcessEnv) {
   return new Promise<void>((resolve, reject) => {
-    const child = spawn(command, args, { cwd: root, env, stdio: 'pipe' });
+    const child = spawn(command, args, {
+      cwd: root,
+      env,
+      stdio: 'pipe',
+      shell: process.platform === 'win32',
+    });
     // Do not surface seed stderr: Prisma error formatting could include a password hash.
     child.stdout.resume(); child.stderr.resume();
     child.on('error', reject);
@@ -37,7 +42,9 @@ it('seeds a fresh disposable test database once, preserves credentials, and matc
     const before = await readFile(credentialUrl, 'utf8');
     await run('npx', ['--no-install', 'tsx', 'packages/db/prisma/seed.ts'], env);
     expect(await readFile(credentialUrl, 'utf8')).toBe(before);
-    expect((await stat(credentialUrl)).mode & 0o777).toBe(0o600);
+    if (process.platform !== 'win32') {
+      expect((await stat(credentialUrl)).mode & 0o777).toBe(0o600);
+    }
     const credentials = (JSON.parse(before) as { credentials: Array<{ account: string; initialPassword: string }> }).credentials;
     expect(credentials).toHaveLength(19);
     expect(new Set(credentials.map((c) => c.initialPassword)).size).toBe(19);

@@ -178,7 +178,9 @@ describe('independent simulators over real HTTP', () => {
       businessId: bill().businessId, version: 1, outcome: 'DUPLICATE', latestVersion: 1,
     });
     expect(await bills()).toEqual({ latestVersion: 1, latestAmountYuan: '1200.00', acceptedBusinessIds: [bill().businessId] });
-    expect((await stat(options.statePath)).mode & 0o777).toBe(0o600);
+    if (process.platform !== 'win32') {
+      expect((await stat(options.statePath)).mode & 0o777).toBe(0o600);
+    }
   });
 
   it('rejects the same business ID with different valid payload and keeps the original', async () => {

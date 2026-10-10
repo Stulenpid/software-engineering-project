@@ -85,12 +85,25 @@ async function persist(path: string, state: State): Promise<void> {
     } finally {
       await file.close();
     }
+
+    // Windows 的 rename 不能覆盖已存在的目标文件，先删除再重命名。
+    // POSIX 上 rename 是原子替换，保持原逻辑即可。
+    if (isWindows) {
+      await unlink(path).catch((error: NodeJS.ErrnoException) => {
+        if (error.code !== 'ENOENT') throw error;
+      });
+    }
     await rename(temporary, path);
-    const directory = await open(dirname(path), 'r');
-    try {
-      await directory.sync();
-    } finally {
-      await directory.close();
+
+    // Windows 不支持对目录调用 fsync，会抛 EPERM/EISDIR，跳过。
+    // POSIX 上保留目录 fsync，确保 rename 落盘。
+    if (!isWindows) {
+      const directory = await open(dirname(path), 'r');
+      try {
+        await directory.sync();
+      } finally {
+        await directory.close();
+      }
     }
   } finally {
     await unlink(temporary).catch((error: NodeJS.ErrnoException) => {
